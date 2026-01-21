@@ -21,7 +21,10 @@
   "scripts": {
     "test": "vitest run",
     "test:ai": "bunx evalite",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "build": "bun build --compile --minify src/cli.ts --outfile ./dist/today",
+    "build:all": "bun run scripts/build-all.ts",
+    "install:local": "bun run scripts/install.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.14",
