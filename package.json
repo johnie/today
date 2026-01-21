@@ -9,13 +9,18 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
     "@types/bun": "latest",
+    "autoevals": "^0.0.131",
+    "evalite": "^0.19.0",
     "lefthook": "^2.0.15",
-    "ultracite": "7.0.12"
+    "ultracite": "7.0.12",
+    "vitest": "^4.0.17"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "scripts": {
+    "test": "vitest run",
+    "test:ai": "bunx evalite",
     "prepare": "lefthook install"
   },
   "dependencies": {
