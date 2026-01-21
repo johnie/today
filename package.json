@@ -1,0 +1,29 @@
+{
+  "name": "today",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "today": "src/cli.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.11",
+    "@types/bun": "latest",
+    "lefthook": "^2.0.15",
+    "ultracite": "7.0.12"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "prepare": "lefthook install"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.14",
+    "@ai-sdk/openai-compatible": "^2.0.16",
+    "@stricli/core": "^1.2.5",
+    "ai": "^6.0.44",
+    "enquirer": "^2.4.1",
+    "ollama-ai-provider-v2": "^3.0.1"
+  }
+}
