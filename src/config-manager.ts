@@ -133,10 +133,9 @@ export async function runInteractiveConfig(): Promise<void> {
     ],
   });
 
-  switch (action) {
-    case "view": {
+  const ACTIONS: Record<string, (config: Settings) => Promise<void>> = {
+    view: async (_config: Settings) => {
       await showConfig();
-      // Ask if they want to do something else
       const { continueConfig } = await enquirer.prompt<{
         continueConfig: boolean;
       }>({
@@ -148,28 +147,17 @@ export async function runInteractiveConfig(): Promise<void> {
       if (continueConfig) {
         await runInteractiveConfig();
       }
-      break;
-    }
-
-    case "provider":
-      await changeProvider(config);
-      break;
-
-    case "model":
-      await changeModel(config);
-      break;
-
-    case "advanced":
-      await advancedSettings(config);
-      break;
-
-    case "exit":
+    },
+    provider: changeProvider,
+    model: changeModel,
+    advanced: advancedSettings,
+    exit: () => {
       console.log("\n👋 Exiting configuration\n");
-      break;
+      return Promise.resolve();
+    },
+  };
 
-    default:
-      break;
-  }
+  await ACTIONS[action]?.(config);
 }
 
 async function changeProvider(config: Settings): Promise<void> {
@@ -215,11 +203,10 @@ async function changeModel(config: Settings): Promise<void> {
       type: "select",
       name: "whichProvider",
       message: "Which provider's model would you like to configure?",
-      choices: [
-        { name: "ollama", message: "Ollama" },
-        { name: "lmstudio", message: "LM Studio" },
-        { name: "openai", message: "OpenAI" },
-      ],
+      choices: Object.keys(PROVIDER_META).map((p) => ({
+        name: p,
+        message: PROVIDER_META[p as Provider].displayName,
+      })),
     });
     targetProvider = whichProvider;
   }
