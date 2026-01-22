@@ -12,7 +12,7 @@ I will do this by: [one concrete action]
 Everything else can wait.
 ```
 
-Runs locally with Ollama or LM Studio, falls back to OpenAI if needed.
+Runs locally with Ollama or LM Studio, falls back to OpenRouter or OpenAI if needed.
 
 ## Install
 
@@ -51,20 +51,30 @@ Subsequent runs append dated entries to your output file (default: `./today.txt`
 ### Provider switching
 
 ```bash
-today --ollama      # Use Ollama
-today --lmstudio    # Use LM Studio
-today --openai      # Use OpenAI
-today --auto        # Try local first, fallback to OpenAI
+today --provider ollama      # Use Ollama
+today --provider lmstudio    # Use LM Studio
+today --provider openrouter  # Use OpenRouter
+today --provider openai      # Use OpenAI
+today --provider auto        # Try local first, fallback to cloud
+```
+
+### Runtime overrides
+
+```bash
+today --model gpt-4o              # Override model for this run
+today --provider openai --model gpt-4o  # Override both provider and model
 ```
 
 ## Configuration
 
 Settings stored at `~/.today/settings.json`.
 
-Rerun setup wizard anytime:
+### Configuration options
 
 ```bash
-today --setup
+today --setup        # Full setup wizard
+today --config       # Interactive config manager
+today --show-config  # View current settings
 ```
 
 ## License

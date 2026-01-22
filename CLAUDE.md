@@ -29,7 +29,10 @@ Note: Bun's `--compile` doesn't support cross-compilation. Build for other platf
 
 Available flags:
 - `--setup` - run configuration wizard
-- `--ollama / --lmstudio / --openai / --auto` - switch LLM provider
+- `--config` - interactive config manager
+- `--show-config` - display current settings
+- `--provider <value>` - override provider (auto/ollama/lmstudio/openai/openrouter)
+- `--model <name>` - override model for this run
 
 First run auto-triggers setup if `~/.today/settings.json` doesn't exist.
 
@@ -56,22 +59,33 @@ First run auto-triggers setup if `~/.today/settings.json` doesn't exist.
   - `ollama-ai-provider-v2` for Ollama
   - `@ai-sdk/openai-compatible` for LM Studio
   - `@ai-sdk/openai` for OpenAI
+  - `@openrouter/ai-sdk-provider` for OpenRouter
 - All use same `generateText()` interface from AI SDK
 
 **Provider Auto-Detection (`src/llm.ts`):**
-1. `auto` mode tries local providers first (Ollama → LM Studio), falls back to OpenAI
+1. `auto` mode tries local providers first (Ollama → LM Studio), falls back to cloud (OpenRouter → OpenAI)
 2. Detection via HTTP health checks:
    - Ollama: `GET {host}/api/tags`
    - LM Studio: `GET {host}/v1/models`
-   - OpenAI: checks if API key exists
-3. Explicit provider flags (`--ollama`, `--openai`, etc.) skip detection
+   - OpenRouter/OpenAI: checks if API key exists
+3. Explicit provider flag (`--provider <value>`) skips detection
 4. Errors in auto mode are caught and next provider is tried; explicit mode throws immediately
 
 **Configuration (`src/config.ts`):**
 - User settings stored in `~/.today/settings.json`
-- Contains: provider selection, model names per provider, host URLs, API keys, output file path
+- Contains: provider selection, model names per provider (Ollama, LM Studio, OpenAI, OpenRouter), host URLs, API keys (OpenAI, OpenRouter), output file path
 - `runSetup()` provides interactive wizard using enquirer prompts
 - Settings merge with defaults on load
+
+**Config Manager (`src/config-manager.ts`):**
+- Interactive configuration manager launched via `--config` flag
+- Provides menu-driven interface for updating settings without full setup wizard
+- Options include: changing provider, selecting models, viewing current config
+
+**Model Fetcher (`src/model-fetcher.ts`):**
+- Dynamically fetches available models from LLM providers
+- Used by config manager to present real-time model choices
+- Queries provider APIs to get current model lists
 
 **File Output (`src/file.ts`):**
 - Appends dated entries to output file (default: `./today.txt`)
