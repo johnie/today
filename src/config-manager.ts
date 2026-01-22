@@ -7,6 +7,7 @@ import {
   type Provider,
   saveConfig,
 } from "@/config";
+import { fetchModelsForProvider } from "./model-fetcher";
 
 export interface RuntimeOverrides {
   provider?: Settings["provider"];
@@ -221,15 +222,22 @@ async function changeModel(config: Settings): Promise<void> {
     `\nCurrent ${targetProvider} model: ${config.models[targetProvider]}\n`
   );
 
-  // Show some common models based on provider
-  const commonModels = getCommonModels(targetProvider);
+  // Try to fetch available models
+  console.log(`Fetching available ${targetProvider} models...`);
+  const availableModels = await fetchModelsForProvider(targetProvider, config);
+
+  // Build choices from fetched models or fall back to static list
+  const modelChoices =
+    availableModels.length > 0
+      ? availableModels.map((m) => ({ name: m, message: m }))
+      : getCommonModels(targetProvider);
 
   const { modelChoice } = await enquirer.prompt<{ modelChoice: string }>({
     type: "select",
     name: "modelChoice",
     message: `Select ${targetProvider} model:`,
     choices: [
-      ...commonModels,
+      ...modelChoices,
       { name: "custom", message: "Enter custom model name" },
     ],
   });
