@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
 import type { Provider, Settings } from "@/config";
@@ -22,6 +23,7 @@ const DETECTION_CONFIG: Record<Provider, DetectionConfig> = {
   ollama: { endpoint: "/api/tags" },
   lmstudio: { endpoint: "/v1/models" },
   openai: { check: (s: Settings) => !!s.apiKeys.openai },
+  openrouter: { check: (s: Settings) => !!s.apiKeys.openrouter },
 };
 
 function createProviders(settings: Settings) {
@@ -31,7 +33,10 @@ function createProviders(settings: Settings) {
       name: "lmstudio",
       baseURL: `${settings.hosts.lmstudio}/v1`,
     }),
-    openai: createOpenAI({ apiKey: settings.apiKeys.openai }),
+    openai: createOpenAI({ apiKey: settings.apiKeys.openai || undefined }),
+    openrouter: createOpenRouter({
+      apiKey: settings.apiKeys.openrouter || undefined,
+    }),
   };
 }
 
@@ -101,6 +106,19 @@ async function tryProvider(
   userInput: string,
   throwOnError: boolean
 ): Promise<{ refined: string; provider: string } | null> {
+  // Check if provider requires API key but doesn't have one
+  const meta = PROVIDER_META[providerName];
+  if (meta.hasApiKey && !settings.apiKeys[providerName]) {
+    const error = new Error(
+      `${meta.displayName} requires an API key. Run 'today --setup' to configure it.`
+    );
+    if (throwOnError) {
+      throw error;
+    }
+    console.error(error.message);
+    return null;
+  }
+
   try {
     const refined = await generate(
       providers,

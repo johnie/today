@@ -37,6 +37,7 @@ const todayCommand = buildCommand({
           "ollama",
           "lmstudio",
           "openai",
+          "openrouter",
         ],
         brief: "Override LLM provider for this run (does not save)",
         optional: true,

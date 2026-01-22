@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import enquirer from "enquirer";
+import { fetchModelsForProvider } from "./model-fetcher";
 
 export const PROVIDER_META = {
   ollama: {
@@ -42,6 +43,29 @@ export const PROVIDER_META = {
       { name: "gpt-3.5-turbo", message: "gpt-3.5-turbo" },
     ],
   },
+  openrouter: {
+    label: "openrouter",
+    displayName: "OpenRouter",
+    hasHost: false,
+    hasApiKey: true,
+    defaultHost: "",
+    defaultModel: "google/gemini-flash-1.5",
+    commonModels: [
+      {
+        name: "google/gemini-flash-1.5",
+        message: "google/gemini-flash-1.5 (recommended)",
+      },
+      {
+        name: "anthropic/claude-3.5-sonnet",
+        message: "anthropic/claude-3.5-sonnet",
+      },
+      { name: "openai/gpt-4o", message: "openai/gpt-4o" },
+      {
+        name: "meta-llama/llama-3.1-70b-instruct",
+        message: "meta-llama/llama-3.1-70b-instruct",
+      },
+    ],
+  },
 } as const;
 
 export type Provider = keyof typeof PROVIDER_META;
@@ -65,6 +89,7 @@ export interface Settings {
     ollama: string;
     lmstudio: string;
     openai: string;
+    openrouter: string;
   };
   hosts: {
     ollama: string;
@@ -72,6 +97,7 @@ export interface Settings {
   };
   apiKeys: {
     openai: string;
+    openrouter: string;
   };
   outputFile: string;
   systemPrompt: string | null;
@@ -83,6 +109,7 @@ const DEFAULT_SETTINGS: Settings = {
     ollama: PROVIDER_META.ollama.defaultModel,
     lmstudio: PROVIDER_META.lmstudio.defaultModel,
     openai: PROVIDER_META.openai.defaultModel,
+    openrouter: PROVIDER_META.openrouter.defaultModel,
   },
   hosts: {
     ollama: PROVIDER_META.ollama.defaultHost,
@@ -90,6 +117,7 @@ const DEFAULT_SETTINGS: Settings = {
   },
   apiKeys: {
     openai: "",
+    openrouter: "",
   },
   outputFile: "./today.txt",
   systemPrompt: null,
@@ -178,14 +206,49 @@ export async function runSetup(): Promise<Settings> {
       }
     }
 
-    // Configure model
-    const { value: model } = await enquirer.prompt<{ value: string }>({
-      type: "input",
-      name: "value",
-      message: `${meta.label} model name:`,
-      initial: meta.defaultModel,
-    });
-    settings.models[p] = model;
+    // Configure model - try to fetch available models first
+    console.log(`\nFetching available ${meta.label} models...`);
+    const availableModels = await fetchModelsForProvider(p, settings);
+
+    let finalModel: string;
+
+    if (availableModels.length > 0) {
+      // Show select prompt with fetched models
+      const modelChoices = [
+        ...availableModels.map((m) => ({ name: m, message: m })),
+        { name: "custom", message: "Enter custom model name" },
+      ];
+
+      const { modelChoice } = await enquirer.prompt<{ modelChoice: string }>({
+        type: "select",
+        name: "modelChoice",
+        message: `Select ${meta.label} model:`,
+        choices: modelChoices,
+      });
+
+      if (modelChoice === "custom") {
+        const { customModel } = await enquirer.prompt<{ customModel: string }>({
+          type: "input",
+          name: "customModel",
+          message: "Enter model name:",
+          initial: meta.defaultModel,
+        });
+        finalModel = customModel;
+      } else {
+        finalModel = modelChoice;
+      }
+    } else {
+      // Fallback to input prompt if fetch failed
+      const { value } = await enquirer.prompt<{ value: string }>({
+        type: "input",
+        name: "value",
+        message: `${meta.label} model name:`,
+        initial: meta.defaultModel,
+      });
+      finalModel = value;
+    }
+
+    settings.models[p] = finalModel;
   }
 
   const { outputFile } = await enquirer.prompt<{ outputFile: string }>({
