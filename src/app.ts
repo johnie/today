@@ -1,7 +1,9 @@
 import { buildApplication, buildCommand } from "@stricli/core";
+import type { RuntimeOverrides } from "@/config-manager";
 import {
-  runProviderSwitchCommand,
+  runConfigCommand,
   runSetupCommand,
+  runShowConfigCommand,
   runTodayCommand,
 } from "@/impl";
 
@@ -17,48 +19,62 @@ const todayCommand = buildCommand({
         brief: "Run the configuration setup wizard",
         default: false,
       },
-      ollama: {
+      config: {
         kind: "boolean",
-        brief: "Switch to Ollama provider",
+        brief: "Interactive configuration manager",
         default: false,
       },
-      lmstudio: {
+      "show-config": {
         kind: "boolean",
-        brief: "Switch to LM Studio provider",
+        brief: "Display current configuration",
         default: false,
       },
-      openai: {
-        kind: "boolean",
-        brief: "Switch to OpenAI provider",
-        default: false,
+      provider: {
+        kind: "enum",
+        values: ["auto", "ollama", "lmstudio", "openai"],
+        brief: "Override LLM provider for this run (does not save)",
+        optional: true,
       },
-      auto: {
-        kind: "boolean",
-        brief: "Switch to auto-detection (tries all providers)",
-        default: false,
+      model: {
+        kind: "parsed",
+        parse: String,
+        brief: "Override model for this run (does not save)",
+        optional: true,
       },
     },
   },
   docs: {
     brief: "Refine your daily intentions with AI",
   },
-  func: (flags) => {
+  func: (flags: {
+    setup: boolean;
+    config: boolean;
+    "show-config": boolean;
+    provider?: "auto" | "ollama" | "lmstudio" | "openai";
+    model?: string;
+  }) => {
+    // Configuration commands
     if (flags.setup) {
       return runSetupCommand();
     }
-    if (flags.ollama) {
-      return runProviderSwitchCommand("ollama");
+    if (flags.config) {
+      return runConfigCommand();
     }
-    if (flags.lmstudio) {
-      return runProviderSwitchCommand("lmstudio");
+    if (flags["show-config"]) {
+      return runShowConfigCommand();
     }
-    if (flags.openai) {
-      return runProviderSwitchCommand("openai");
+
+    // Build runtime overrides from flags
+    const overrides: RuntimeOverrides = {};
+    if (flags.provider !== undefined) {
+      overrides.provider = flags.provider;
     }
-    if (flags.auto) {
-      return runProviderSwitchCommand("auto");
+    if (flags.model !== undefined) {
+      overrides.model = flags.model;
     }
-    return runTodayCommand();
+
+    // Run main command with overrides
+    return runTodayCommand(overrides);
   },
 });
 
