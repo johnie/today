@@ -42,6 +42,29 @@ export const PROVIDER_META = {
       { name: "gpt-3.5-turbo", message: "gpt-3.5-turbo" },
     ],
   },
+  openrouter: {
+    label: "openrouter",
+    displayName: "OpenRouter",
+    hasHost: false,
+    hasApiKey: true,
+    defaultHost: "",
+    defaultModel: "google/gemini-flash-1.5",
+    commonModels: [
+      {
+        name: "google/gemini-flash-1.5",
+        message: "google/gemini-flash-1.5 (recommended)",
+      },
+      {
+        name: "anthropic/claude-3.5-sonnet",
+        message: "anthropic/claude-3.5-sonnet",
+      },
+      { name: "openai/gpt-4o", message: "openai/gpt-4o" },
+      {
+        name: "meta-llama/llama-3.1-70b-instruct",
+        message: "meta-llama/llama-3.1-70b-instruct",
+      },
+    ],
+  },
 } as const;
 
 export type Provider = keyof typeof PROVIDER_META;
@@ -65,6 +88,7 @@ export interface Settings {
     ollama: string;
     lmstudio: string;
     openai: string;
+    openrouter: string;
   };
   hosts: {
     ollama: string;
@@ -72,6 +96,7 @@ export interface Settings {
   };
   apiKeys: {
     openai: string;
+    openrouter: string;
   };
   outputFile: string;
   systemPrompt: string | null;
@@ -83,6 +108,7 @@ const DEFAULT_SETTINGS: Settings = {
     ollama: PROVIDER_META.ollama.defaultModel,
     lmstudio: PROVIDER_META.lmstudio.defaultModel,
     openai: PROVIDER_META.openai.defaultModel,
+    openrouter: PROVIDER_META.openrouter.defaultModel,
   },
   hosts: {
     ollama: PROVIDER_META.ollama.defaultHost,
@@ -90,6 +116,7 @@ const DEFAULT_SETTINGS: Settings = {
   },
   apiKeys: {
     openai: "",
+    openrouter: "",
   },
   outputFile: "./today.txt",
   systemPrompt: null,
