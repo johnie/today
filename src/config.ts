@@ -54,17 +54,10 @@ export const PROVIDER_CHOICES: Array<{
   message: string;
 }> = [
   { name: "auto", message: "auto (recommended - tries local first)" },
-  { name: "ollama", message: "ollama" },
-  { name: "lmstudio", message: "lmstudio" },
-  { name: "openai", message: "openai" },
+  ...PROVIDERS.map((p) => ({ name: p, message: PROVIDER_META[p].label })),
 ];
 
-export const PROVIDER_VALUES: readonly ProviderOrAuto[] = [
-  "auto",
-  "ollama",
-  "lmstudio",
-  "openai",
-] as const;
+export const PROVIDER_VALUES = ["auto", ...PROVIDERS] as const;
 
 export interface Settings {
   provider: ProviderOrAuto;
