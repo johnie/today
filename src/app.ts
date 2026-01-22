@@ -59,18 +59,18 @@ const todayCommand = buildCommand({
     provider?: ProviderOrAuto;
     model?: string;
   }) => {
-    // Configuration commands
-    if (flags.setup) {
-      return runSetupCommand();
-    }
-    if (flags.config) {
-      return runConfigCommand();
-    }
-    if (flags["show-config"]) {
-      return runShowConfigCommand();
+    const COMMANDS: Record<string, () => Promise<void>> = {
+      setup: runSetupCommand,
+      config: runConfigCommand,
+      "show-config": runShowConfigCommand,
+    };
+
+    for (const [flag, handler] of Object.entries(COMMANDS)) {
+      if (flags[flag as keyof typeof flags]) {
+        return handler();
+      }
     }
 
-    // Build runtime overrides from flags
     const overrides: RuntimeOverrides = {};
     if (flags.provider !== undefined) {
       overrides.provider = flags.provider;
@@ -79,7 +79,6 @@ const todayCommand = buildCommand({
       overrides.model = flags.model;
     }
 
-    // Run main command with overrides
     return runTodayCommand(overrides);
   },
 });
