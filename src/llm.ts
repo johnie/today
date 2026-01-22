@@ -33,8 +33,10 @@ function createProviders(settings: Settings) {
       name: "lmstudio",
       baseURL: `${settings.hosts.lmstudio}/v1`,
     }),
-    openai: createOpenAI({ apiKey: settings.apiKeys.openai }),
-    openrouter: createOpenRouter({ apiKey: settings.apiKeys.openrouter }),
+    openai: createOpenAI({ apiKey: settings.apiKeys.openai || undefined }),
+    openrouter: createOpenRouter({
+      apiKey: settings.apiKeys.openrouter || undefined,
+    }),
   };
 }
 
@@ -104,6 +106,19 @@ async function tryProvider(
   userInput: string,
   throwOnError: boolean
 ): Promise<{ refined: string; provider: string } | null> {
+  // Check if provider requires API key but doesn't have one
+  const meta = PROVIDER_META[providerName];
+  if (meta.hasApiKey && !settings.apiKeys[providerName]) {
+    const error = new Error(
+      `${meta.displayName} requires an API key. Run 'today --setup' to configure it.`
+    );
+    if (throwOnError) {
+      throw error;
+    }
+    console.error(error.message);
+    return null;
+  }
+
   try {
     const refined = await generate(
       providers,
