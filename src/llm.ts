@@ -2,7 +2,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
-import type { Settings } from "@/config";
+import type { Provider, Settings } from "@/config";
+import { PROVIDER_META } from "@/config";
 
 const DEFAULT_SYSTEM_PROMPT = `Refine the user's intention into this exact format:
 
@@ -12,7 +13,17 @@ Everything else can wait.
 
 Be concise and actionable. Keep it focused on a single goal. It is important that you only output what is defined in the template above without any additional commentary or explanation.`;
 
-// Provider factory functions
+interface DetectionConfig {
+  endpoint?: string;
+  check?: (s: Settings) => boolean;
+}
+
+const DETECTION_CONFIG: Record<Provider, DetectionConfig> = {
+  ollama: { endpoint: "/api/tags" },
+  lmstudio: { endpoint: "/v1/models" },
+  openai: { check: (s: Settings) => !!s.apiKeys.openai },
+};
+
 function createProviders(settings: Settings) {
   return {
     ollama: createOllama({ baseURL: `${settings.hosts.ollama}/api` }),
@@ -25,54 +36,46 @@ function createProviders(settings: Settings) {
 }
 
 async function detectProvider(settings: Settings): Promise<{
-  provider: "ollama" | "lmstudio" | "openai" | null;
+  provider: Provider | null;
   host?: string;
 }> {
-  // Try Ollama first
-  try {
-    const response = await fetch(`${settings.hosts.ollama}/api/tags`, {
-      method: "GET",
-    });
-    if (response.ok) {
-      return { provider: "ollama", host: settings.hosts.ollama };
-    }
-  } catch {
-    // Ollama not available
-  }
+  for (const [providerName, config] of Object.entries(DETECTION_CONFIG)) {
+    const provider = providerName as Provider;
 
-  // Try LM Studio
-  try {
-    const response = await fetch(`${settings.hosts.lmstudio}/v1/models`, {
-      method: "GET",
-    });
-    if (response.ok) {
-      return { provider: "lmstudio", host: settings.hosts.lmstudio };
-    }
-  } catch {
-    // LM Studio not available
-  }
+    if (config.endpoint) {
+      const meta = PROVIDER_META[provider];
+      if (!meta.hasHost) {
+        continue;
+      }
 
-  // Try OpenAI if key is available
-  if (settings.apiKeys.openai) {
-    return { provider: "openai" };
+      try {
+        const host = settings.hosts[provider];
+        const response = await fetch(`${host}${config.endpoint}`, {
+          method: "GET",
+        });
+        if (response.ok) {
+          return { provider, host };
+        }
+      } catch {
+        // Provider not available
+      }
+    } else if (config.check?.(settings)) {
+      return { provider };
+    }
   }
 
   return { provider: null };
 }
 
 async function generate(
-  provider: ReturnType<typeof createProviders>,
-  providerName: "ollama" | "lmstudio" | "openai",
+  providers: ReturnType<typeof createProviders>,
+  providerName: Provider,
   settings: Settings,
   userInput: string
 ): Promise<string> {
   const systemPrompt = settings.systemPrompt || DEFAULT_SYSTEM_PROMPT;
-
-  // Get the appropriate model name based on provider
   const modelName = settings.models[providerName];
-
-  // Get the provider instance and create the model
-  const providerInstance = provider[providerName];
+  const providerInstance = providers[providerName];
   const model = providerInstance(modelName);
 
   const { text } = await generateText({
@@ -91,81 +94,69 @@ function formatError(error: unknown, provider: string): string {
   return `${provider} error: Unknown error occurred`;
 }
 
+async function tryProvider(
+  providers: ReturnType<typeof createProviders>,
+  providerName: Provider,
+  settings: Settings,
+  userInput: string,
+  throwOnError: boolean
+): Promise<{ refined: string; provider: string } | null> {
+  try {
+    const refined = await generate(
+      providers,
+      providerName,
+      settings,
+      userInput
+    );
+    return { refined, provider: PROVIDER_META[providerName].label };
+  } catch (error) {
+    if (throwOnError) {
+      throw new Error(
+        formatError(error, PROVIDER_META[providerName].displayName)
+      );
+    }
+    console.error(
+      `${PROVIDER_META[providerName].displayName} refinement failed:`,
+      error
+    );
+    return null;
+  }
+}
+
 export async function refineIntention(
   userInput: string,
   settings: Settings
 ): Promise<{ refined: string; provider: string | null }> {
   const providers = createProviders(settings);
 
-  // Handle explicit provider selection
-  if (settings.provider === "ollama") {
-    try {
-      const refined = await generate(providers, "ollama", settings, userInput);
-      return { refined, provider: "ollama" };
-    } catch (error) {
-      throw new Error(formatError(error, "Ollama"));
+  if (settings.provider !== "auto") {
+    const result = await tryProvider(
+      providers,
+      settings.provider,
+      settings,
+      userInput,
+      true
+    );
+    if (result) {
+      return result;
     }
   }
 
-  if (settings.provider === "lmstudio") {
-    try {
-      const refined = await generate(
-        providers,
-        "lmstudio",
-        settings,
-        userInput
-      );
-      return { refined, provider: "lm-studio" };
-    } catch (error) {
-      throw new Error(formatError(error, "LM Studio"));
-    }
-  }
-
-  if (settings.provider === "openai") {
-    try {
-      const refined = await generate(providers, "openai", settings, userInput);
-      return { refined, provider: "openai" };
-    } catch (error) {
-      throw new Error(formatError(error, "OpenAI"));
-    }
-  }
-
-  // Auto mode: try local first, then OpenAI fallback
   const detected = await detectProvider(settings);
 
-  if (detected.provider === "ollama") {
-    try {
-      const refined = await generate(providers, "ollama", settings, userInput);
-      return { refined, provider: "ollama" };
-    } catch (error) {
-      console.error("Ollama refinement failed:", error);
+  if (detected.provider) {
+    const result = await tryProvider(
+      providers,
+      detected.provider,
+      settings,
+      userInput,
+      false
+    );
+    if (result) {
+      return result;
     }
   }
 
-  if (detected.provider === "lmstudio") {
-    try {
-      const refined = await generate(
-        providers,
-        "lmstudio",
-        settings,
-        userInput
-      );
-      return { refined, provider: "lm-studio" };
-    } catch (error) {
-      console.error("LM Studio refinement failed:", error);
-    }
-  }
-
-  if (detected.provider === "openai") {
-    try {
-      const refined = await generate(providers, "openai", settings, userInput);
-      return { refined, provider: "openai" };
-    } catch (error) {
-      console.error("OpenAI refinement failed:", error);
-    }
-  }
-
-  // All providers failed or unavailable
   throw new Error(
     "No LLM provider available. Please configure a provider or check your settings."
   );

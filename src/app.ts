@@ -1,7 +1,10 @@
 import { buildApplication, buildCommand } from "@stricli/core";
+import { PROVIDER_VALUES, type ProviderOrAuto } from "@/config";
+import type { RuntimeOverrides } from "@/config-manager";
 import {
-  runProviderSwitchCommand,
+  runConfigCommand,
   runSetupCommand,
+  runShowConfigCommand,
   runTodayCommand,
 } from "@/impl";
 
@@ -17,48 +20,66 @@ const todayCommand = buildCommand({
         brief: "Run the configuration setup wizard",
         default: false,
       },
-      ollama: {
+      config: {
         kind: "boolean",
-        brief: "Switch to Ollama provider",
+        brief: "Interactive configuration manager",
         default: false,
       },
-      lmstudio: {
+      "show-config": {
         kind: "boolean",
-        brief: "Switch to LM Studio provider",
+        brief: "Display current configuration",
         default: false,
       },
-      openai: {
-        kind: "boolean",
-        brief: "Switch to OpenAI provider",
-        default: false,
+      provider: {
+        kind: "enum",
+        values: PROVIDER_VALUES as unknown as [
+          "auto",
+          "ollama",
+          "lmstudio",
+          "openai",
+        ],
+        brief: "Override LLM provider for this run (does not save)",
+        optional: true,
       },
-      auto: {
-        kind: "boolean",
-        brief: "Switch to auto-detection (tries all providers)",
-        default: false,
+      model: {
+        kind: "parsed",
+        parse: String,
+        brief: "Override model for this run (does not save)",
+        optional: true,
       },
     },
   },
   docs: {
     brief: "Refine your daily intentions with AI",
   },
-  func: (flags) => {
-    if (flags.setup) {
-      return runSetupCommand();
+  func: (flags: {
+    setup: boolean;
+    config: boolean;
+    "show-config": boolean;
+    provider?: ProviderOrAuto;
+    model?: string;
+  }) => {
+    const COMMANDS: Record<string, () => Promise<void>> = {
+      setup: runSetupCommand,
+      config: runConfigCommand,
+      "show-config": runShowConfigCommand,
+    };
+
+    for (const [flag, handler] of Object.entries(COMMANDS)) {
+      if (flags[flag as keyof typeof flags]) {
+        return handler();
+      }
     }
-    if (flags.ollama) {
-      return runProviderSwitchCommand("ollama");
+
+    const overrides: RuntimeOverrides = {};
+    if (flags.provider !== undefined) {
+      overrides.provider = flags.provider;
     }
-    if (flags.lmstudio) {
-      return runProviderSwitchCommand("lmstudio");
+    if (flags.model !== undefined) {
+      overrides.model = flags.model;
     }
-    if (flags.openai) {
-      return runProviderSwitchCommand("openai");
-    }
-    if (flags.auto) {
-      return runProviderSwitchCommand("auto");
-    }
-    return runTodayCommand();
+
+    return runTodayCommand(overrides);
   },
 });
 
