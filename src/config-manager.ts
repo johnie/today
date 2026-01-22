@@ -55,6 +55,12 @@ const ADVANCED_SETTINGS = {
     message: "OpenAI API key:",
     getValue: (c: Settings) => c.apiKeys.openai,
   },
+  "openrouter-key": {
+    path: ["apiKeys", "openrouter"],
+    type: "password" as const,
+    message: "OpenRouter API key:",
+    getValue: (c: Settings) => c.apiKeys.openrouter,
+  },
   "output-file": {
     path: ["outputFile"],
     type: "input" as const,
@@ -254,6 +260,7 @@ async function advancedSettings(config: Settings): Promise<void> {
       { name: "ollama-host", message: "Ollama host URL" },
       { name: "lmstudio-host", message: "LM Studio host URL" },
       { name: "openai-key", message: "OpenAI API key" },
+      { name: "openrouter-key", message: "OpenRouter API key" },
       { name: "output-file", message: "Output file path" },
       { name: "system-prompt", message: "System prompt (advanced)" },
       { name: "back", message: "← Back" },
