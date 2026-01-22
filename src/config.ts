@@ -5,6 +5,7 @@ import enquirer from "enquirer";
 export const PROVIDER_META = {
   ollama: {
     label: "ollama",
+    displayName: "Ollama",
     hasHost: true,
     hasApiKey: false,
     defaultHost: "http://localhost:11434",
@@ -20,6 +21,7 @@ export const PROVIDER_META = {
   },
   lmstudio: {
     label: "lmstudio",
+    displayName: "LM Studio",
     hasHost: true,
     hasApiKey: false,
     defaultHost: "http://localhost:1234",
@@ -28,6 +30,7 @@ export const PROVIDER_META = {
   },
   openai: {
     label: "openai",
+    displayName: "OpenAI",
     hasHost: false,
     hasApiKey: true,
     defaultHost: "",
