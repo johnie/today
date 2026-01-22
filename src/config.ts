@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import enquirer from "enquirer";
+import { fetchModelsForProvider } from "./model-fetcher";
 
 export const PROVIDER_META = {
   ollama: {
@@ -205,14 +206,49 @@ export async function runSetup(): Promise<Settings> {
       }
     }
 
-    // Configure model
-    const { value: model } = await enquirer.prompt<{ value: string }>({
-      type: "input",
-      name: "value",
-      message: `${meta.label} model name:`,
-      initial: meta.defaultModel,
-    });
-    settings.models[p] = model;
+    // Configure model - try to fetch available models first
+    console.log(`\nFetching available ${meta.label} models...`);
+    const availableModels = await fetchModelsForProvider(p, settings);
+
+    let finalModel: string;
+
+    if (availableModels.length > 0) {
+      // Show select prompt with fetched models
+      const modelChoices = [
+        ...availableModels.map((m) => ({ name: m, message: m })),
+        { name: "custom", message: "Enter custom model name" },
+      ];
+
+      const { modelChoice } = await enquirer.prompt<{ modelChoice: string }>({
+        type: "select",
+        name: "modelChoice",
+        message: `Select ${meta.label} model:`,
+        choices: modelChoices,
+      });
+
+      if (modelChoice === "custom") {
+        const { customModel } = await enquirer.prompt<{ customModel: string }>({
+          type: "input",
+          name: "customModel",
+          message: "Enter model name:",
+          initial: meta.defaultModel,
+        });
+        finalModel = customModel;
+      } else {
+        finalModel = modelChoice;
+      }
+    } else {
+      // Fallback to input prompt if fetch failed
+      const { value } = await enquirer.prompt<{ value: string }>({
+        type: "input",
+        name: "value",
+        message: `${meta.label} model name:`,
+        initial: meta.defaultModel,
+      });
+      finalModel = value;
+    }
+
+    settings.models[p] = finalModel;
   }
 
   const { outputFile } = await enquirer.prompt<{ outputFile: string }>({
