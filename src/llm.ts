@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
 import type { Provider, Settings } from "@/config";
@@ -22,6 +23,7 @@ const DETECTION_CONFIG: Record<Provider, DetectionConfig> = {
   ollama: { endpoint: "/api/tags" },
   lmstudio: { endpoint: "/v1/models" },
   openai: { check: (s: Settings) => !!s.apiKeys.openai },
+  openrouter: { check: (s: Settings) => !!s.apiKeys.openrouter },
 };
 
 function createProviders(settings: Settings) {
@@ -32,6 +34,7 @@ function createProviders(settings: Settings) {
       baseURL: `${settings.hosts.lmstudio}/v1`,
     }),
     openai: createOpenAI({ apiKey: settings.apiKeys.openai }),
+    openrouter: createOpenRouter({ apiKey: settings.apiKeys.openrouter }),
   };
 }
 
