@@ -1,12 +1,35 @@
 import enquirer from "enquirer";
-import type { Settings } from "@/config";
-import { configExists, loadConfig, runSetup, saveConfig } from "@/config";
+import { configExists, loadConfig, runSetup } from "@/config";
+import {
+  applyOverrides,
+  type RuntimeOverrides,
+  runInteractiveConfig,
+  showConfig,
+} from "@/config-manager";
 import { writeTodayFile } from "@/file";
 import { refineIntention } from "@/llm";
 
-export async function runTodayCommand(): Promise<void> {
+export async function runTodayCommand(
+  overrides: RuntimeOverrides = {}
+): Promise<void> {
   // Check if config exists, run setup if not
-  const config = (await configExists()) ? await loadConfig() : await runSetup();
+  let config = (await configExists()) ? await loadConfig() : await runSetup();
+
+  // Apply runtime overrides if provided
+  const hasOverrides = overrides.provider || overrides.model;
+  if (hasOverrides) {
+    config = applyOverrides(config, overrides);
+
+    // Show what's being used
+    console.log("\n🔧 Runtime overrides active:");
+    if (overrides.provider) {
+      console.log(`   Provider: ${overrides.provider}`);
+    }
+    if (overrides.model) {
+      console.log(`   Model: ${overrides.model}`);
+    }
+    console.log();
+  }
 
   const { input } = await enquirer.prompt<{ input: string }>({
     type: "input",
@@ -42,7 +65,8 @@ export async function runTodayCommand(): Promise<void> {
       "  • Check if the specified model exists in your LLM provider"
     );
     console.error("  • Verify that your LLM provider is running");
-    console.error("  • Review your configuration with the setup command");
+    console.error("  • Review your configuration with: today --show-config");
+    console.error("  • Run interactive config: today --config");
     process.exit(1);
   }
 }
@@ -51,11 +75,10 @@ export async function runSetupCommand(): Promise<void> {
   await runSetup();
 }
 
-export async function runProviderSwitchCommand(
-  provider: Settings["provider"]
-): Promise<void> {
-  const config = await loadConfig();
-  config.provider = provider;
-  await saveConfig(config);
-  console.log(`✅ Provider switched to: ${provider}`);
+export async function runConfigCommand(): Promise<void> {
+  await runInteractiveConfig();
+}
+
+export async function runShowConfigCommand(): Promise<void> {
+  await showConfig();
 }
