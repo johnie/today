@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { run } from "@stricli/core";
 import { app } from "@/app";
 
