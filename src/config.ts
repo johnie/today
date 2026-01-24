@@ -1,6 +1,5 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import enquirer from "enquirer";
 import { fetchModelsForProvider } from "./model-fetcher";
 
 export const PROVIDER_META = {
@@ -163,6 +162,9 @@ export async function saveConfig(settings: Settings): Promise<void> {
 
 export async function runSetup(): Promise<Settings> {
   console.log("\n🎯 Welcome to today! Let's set up your configuration.\n");
+
+  // Dynamic import of enquirer for lazy loading
+  const enquirer = (await import("enquirer")).default;
 
   const { provider } = await enquirer.prompt<{ provider: ProviderOrAuto }>({
     type: "select",
